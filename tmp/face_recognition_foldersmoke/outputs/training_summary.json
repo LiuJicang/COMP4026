@@ -1,0 +1,19 @@
+{
+  "train_dir": "D:\\program\\COMP4026\\tmp\\face_recognition_foldersmoke\\data\\train",
+  "train_samples_seen": 4,
+  "train_samples_used": 4,
+  "train_samples_skipped": 0,
+  "labels": {
+    "0": "alice",
+    "1": "bob"
+  },
+  "threshold": 4500.0,
+  "num_components": 0,
+  "image_size": [
+    128,
+    128
+  ],
+  "cascade_path": "D:\\Anaconda3\\envs\\comp4026\\Lib\\site-packages\\cv2\\data\\haarcascade_frontalface_default.xml",
+  "fallback_mode": "full_image",
+  "skipped_examples": []
+}

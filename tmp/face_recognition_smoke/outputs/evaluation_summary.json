@@ -1,0 +1,12 @@
+{
+  "original_validation": {
+    "accuracy": 1.0,
+    "unknown_rate": 0.0,
+    "known_prediction_rate": 1.0,
+    "known_only_accuracy": 1.0,
+    "mean_confidence": 0.0,
+    "evaluated_samples": 2,
+    "skipped_samples": 0,
+    "skipped_examples": []
+  }
+}

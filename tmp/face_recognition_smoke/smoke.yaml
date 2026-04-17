@@ -1,0 +1,26 @@
+data:
+  image_root: D:/program/COMP4026/tmp/face_recognition_smoke
+  train_csv: D:/program/COMP4026/tmp/face_recognition_smoke/manifests/train.csv
+  val_csv: D:/program/COMP4026/tmp/face_recognition_smoke/manifests/val_original.csv
+  anon_val_csv: ""
+  paired_val_csv: ""
+
+preprocess:
+  image_size: [128, 128]
+  equalize_hist: true
+  fallback_mode: full_image
+  detector:
+    cascade_path: ""
+    scale_factor: 1.1
+    min_neighbors: 5
+    min_size: [48, 48]
+
+model:
+  num_components: 0
+  threshold: 4500.0
+
+train:
+  output_dir: D:/program/COMP4026/tmp/face_recognition_smoke/outputs
+
+eval:
+  save_json: true

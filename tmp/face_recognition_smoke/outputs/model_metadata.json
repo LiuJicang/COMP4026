@@ -1,0 +1,8 @@
+{
+  "image_size": [
+    128,
+    128
+  ],
+  "threshold": 4500.0,
+  "num_components": 0
+}
