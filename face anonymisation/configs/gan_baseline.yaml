@@ -1,0 +1,47 @@
+data:
+  image_root: .
+  train_dir: CelebA-HQ/train
+  val_dir: CelebA-HQ/val
+  supported_extensions: [".jpg", ".jpeg", ".png", ".bmp", ".webp"]
+  image_size: 128
+
+model:
+  generator:
+    base_channels: 64
+    noise_channels: 1
+    bottleneck_dropout: 0.2
+  discriminator:
+    base_channels: 64
+
+train:
+  batch_size: 8
+  num_workers: 2
+  epochs: 20
+  lr_generator: 0.0002
+  lr_discriminator: 0.0002
+  betas: [0.5, 0.999]
+  adv_weight: 1.0
+  recon_weight: 10.0
+  tv_weight: 0.0001
+  label_smoothing: 0.9
+  noise_std: 1.0
+  output_dir: face anonymisation/outputs/gan_baseline
+  preview_samples: 6
+
+inference:
+  checkpoint: face anonymisation/outputs/gan_baseline/best_generator.pt
+  source_dir: CelebA-HQ/val
+  manifest_csv: ""
+  label_mode: none
+  output_dir: face anonymisation/outputs/gan_inference
+  batch_size: 4
+  num_workers: 0
+  apply_to: full_image
+  detection_enabled: false
+  noise_std: 1.0
+  seed: 42
+
+export:
+  anonymized_manifest: face anonymisation/outputs/gan_inference/anonymized_manifest.csv
+  paired_manifest: face anonymisation/outputs/gan_inference/paired_manifest.csv
+  summary_json: face anonymisation/outputs/gan_inference/run_summary.json
