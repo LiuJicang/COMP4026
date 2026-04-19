@@ -15,6 +15,7 @@ preprocess:
     min_size: [48, 48]
 
 model:
+  recognizer: eigenfaces
   num_components: 0
   threshold: 4500.0
 

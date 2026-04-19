@@ -1,0 +1,40 @@
+data:
+  image_root: face recognition/data
+  train_dir: train
+  test_dir: test
+  anonymized_test_dir: test_anonymized
+
+preprocess:
+  image_size: [224, 224]
+  equalize_hist: true
+  fallback_mode: full_image
+  detector:
+    cascade_path: ""
+    scale_factor: 1.1
+    min_neighbors: 5
+    min_size: [48, 48]
+
+model:
+  recognizer: resnet18
+  backbone: resnet18
+  pretrained: true
+  threshold: 0.45
+  threshold_mode: auto
+  threshold_percentile: 95.0
+  threshold_min: 0.0
+  threshold_max: 2.0
+  distance_metric: cosine
+
+train:
+  output_dir: face recognition/outputs/resnet18
+  batch_size: 16
+  num_workers: 0
+  epochs: 5
+  lr: 0.0003
+  weight_decay: 0.0001
+  device: auto
+
+eval:
+  batch_size: 32
+  num_workers: 0
+  save_json: true

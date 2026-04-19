@@ -1,10 +1,11 @@
 # Face Recognition - Part A
 
-This module implements the Part A baseline for the COMP4026 group project:
+This module implements the Part A face recognition work for the COMP4026 group project:
 
 - Face detection: `Viola-Jones` via Haar Cascade
-- Face recognition: `Eigenfaces` via OpenCV
-- Open-set rejection: confidence threshold mapped to `unknown`
+- Face recognition: `Eigenfaces` via OpenCV baseline
+- Main deep recognizer: `ResNet18` with prototype-based `unknown` rejection
+- Open-set rejection: distance threshold mapped to `unknown`
 
 ## Dataset Layout
 
@@ -39,14 +40,28 @@ Folder names are the identity labels. You do not need to write `label0`, `label1
 conda run -n comp4026 python "face recognition/scripts/train_recognition.py" --config "face recognition/configs/baseline.yaml"
 ```
 
+ResNet18 main model:
+
+```powershell
+conda run -n comp4026 python "face recognition/scripts/train_recognition.py" --config "face recognition/configs/resnet18.yaml"
+```
+
 ## Evaluate
 
 ```powershell
 conda run -n comp4026 python "face recognition/scripts/evaluate_recognition.py" --config "face recognition/configs/baseline.yaml" --model-dir "face recognition/outputs/baseline"
 ```
 
+ResNet18 main model:
+
+```powershell
+conda run -n comp4026 python "face recognition/scripts/evaluate_recognition.py" --config "face recognition/configs/resnet18.yaml" --model-dir "face recognition/outputs/resnet18"
+```
+
 ## Notes
 
 - If Haar Cascade is unavailable in the environment, the preprocessor falls back to full-image or center-crop mode so development can continue.
-- `threshold` controls when a prediction is rejected as `unknown`. Lower thresholds make rejection stricter.
+- For `Eigenfaces`, `threshold` controls when a prediction is rejected as `unknown`. Lower thresholds make rejection stricter.
+- For `ResNet18`, `threshold` is the prototype distance threshold. Larger distances are rejected as `unknown`.
+- In `resnet18.yaml`, `threshold_mode: auto` means the threshold is calibrated after training from the training-set distance distribution and then saved into the model metadata.
 - `test_anonymized/` is optional. If you later provide it with the same folder and file structure as `test/`, the evaluator will also report anonymized and paired privacy metrics.
