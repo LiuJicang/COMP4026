@@ -22,12 +22,16 @@ ENV/
 facial expression recognition/outputs/
 FER-2013/
 FER-2013.zip
-face recognition/data/105_classes_pins_dataset/
+face recognition/data/*
+!face recognition/data/train/
+!face recognition/data/test/
+!face recognition/data/test_anonymized/
 face recognition/data/train/**
 face recognition/data/test/**
 face recognition/data/test_anonymized/**
 !face recognition/data/train/.gitkeep
 !face recognition/data/test/.gitkeep
 !face recognition/data/test_anonymized/.gitkeep
+face recognition/*.jpg
 face recognition/outputs/
 tmp/
