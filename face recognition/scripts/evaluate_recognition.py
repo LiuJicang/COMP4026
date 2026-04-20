@@ -5,6 +5,7 @@ import sys
 
 import torch
 import yaml
+from tqdm import tqdm
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -33,7 +34,7 @@ def evaluate_single_dataset(model, dataset, preprocessor):
     confidences = []
     skipped = []
 
-    for record in dataset.records:
+    for record in tqdm(dataset.records, desc="Eval original", unit="image", leave=False):
         image_path = record.image_path
         try:
             face = preprocessor.preprocess_path(image_path)
@@ -69,13 +70,16 @@ def evaluate_single_resnet_dataset(model, dataset, preprocessor, batch_size: int
     y_pred = []
     confidences = []
 
-    for images, _, indices in loader:
+    progress = tqdm(loader, total=len(loader), desc="Eval batches", unit="batch", leave=False)
+
+    for images, _, indices in progress:
         predictions = model.infer_batch(images)
         for index, prediction in zip(indices.tolist(), predictions):
             record = dataset.records[index]
             y_true.append(record.person_name)
             y_pred.append(prediction.predicted_name)
             confidences.append(prediction.confidence)
+        progress.set_postfix(samples=len(y_true))
 
     metrics = classification_metrics(y_true, y_pred, confidences)
     metrics["evaluated_samples"] = len(y_true)
@@ -92,7 +96,7 @@ def evaluate_paired_records(model, paired_records, preprocessor):
     conf_anon = []
     skipped = []
 
-    for record in paired_records:
+    for record in tqdm(paired_records, desc="Paired eval", unit="pair", leave=False):
         try:
             orig_face = preprocessor.preprocess_path(record.orig_path)
             anon_face = preprocessor.preprocess_path(record.anon_path)
@@ -132,7 +136,9 @@ def evaluate_paired_resnet_records(model, paired_records, preprocessor):
     conf_anon = []
     skipped = []
 
-    for record in paired_records:
+    progress = tqdm(paired_records, desc="Paired eval", unit="pair", leave=False)
+
+    for record in progress:
         try:
             orig_face = preprocessor.preprocess_color_path(record.orig_path)
             anon_face = preprocessor.preprocess_color_path(record.anon_path)
@@ -152,6 +158,7 @@ def evaluate_paired_resnet_records(model, paired_records, preprocessor):
             pred_anon.append(anon_prediction.predicted_name)
             conf_orig.append(orig_prediction.confidence)
             conf_anon.append(anon_prediction.confidence)
+            progress.set_postfix(pairs=len(y_true))
         except Exception as exc:
             skipped.append(
                 {
@@ -258,7 +265,8 @@ def main():
         print("Skipped: anonymized_test_dir is empty or not configured.")
 
     if cfg.get("eval", {}).get("save_json", True):
-        output_path = model_dir / "evaluation_summary.json"
+        output_filename = cfg.get("eval", {}).get("summary_json", "evaluation_summary.json")
+        output_path = model_dir / output_filename
         with output_path.open("w", encoding="utf-8") as file:
             json.dump(summary, file, indent=2, ensure_ascii=False)
         print(f"\nSaved evaluation summary to: {output_path}")

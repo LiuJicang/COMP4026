@@ -3,6 +3,7 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from src.data.datasets import FaceFolderDataset
 from src.data.torch_datasets import ResNetFaceDataset
@@ -26,7 +27,9 @@ def _run_train_epoch(recognizer: ResNet18Recognizer, loader, optimizer, device: 
     total_correct = 0
     total_samples = 0
 
-    for images, labels, _ in loader:
+    progress = tqdm(loader, total=len(loader), desc="Train", unit="batch", leave=False)
+
+    for images, labels, _ in progress:
         images = images.to(device)
         labels = labels.to(device)
 
@@ -39,6 +42,11 @@ def _run_train_epoch(recognizer: ResNet18Recognizer, loader, optimizer, device: 
         total_loss += loss.item() * images.size(0)
         total_correct += (logits.argmax(dim=1) == labels).sum().item()
         total_samples += images.size(0)
+        progress.set_postfix(
+            samples=total_samples,
+            loss=f"{(total_loss / max(total_samples, 1)):.4f}",
+            acc=f"{(total_correct / max(total_samples, 1)):.4f}",
+        )
 
     return {
         "loss": total_loss / max(total_samples, 1),
@@ -53,7 +61,10 @@ def _compute_prototypes(recognizer: ResNet18Recognizer, loader, device: str):
     counts = torch.zeros(recognizer.num_classes, dtype=torch.long, device=device)
 
     recognizer.network.eval()
-    for images, labels, _ in loader:
+    progress = tqdm(loader, total=len(loader), desc="Prototypes", unit="batch", leave=False)
+    processed_samples = 0
+
+    for images, labels, _ in progress:
         images = images.to(device)
         labels = labels.to(device)
         _, embeddings = recognizer.network(images)
@@ -63,6 +74,9 @@ def _compute_prototypes(recognizer: ResNet18Recognizer, loader, device: str):
             mask = labels == label
             prototype_sums[label] += embeddings[mask].sum(dim=0)
             counts[label] += mask.sum()
+
+        processed_samples += images.size(0)
+        progress.set_postfix(samples=processed_samples)
 
     counts = counts.clamp_min(1).unsqueeze(1)
     prototypes = prototype_sums / counts
@@ -76,8 +90,10 @@ def _collect_embedding_distances(recognizer: ResNet18Recognizer, loader, prototy
 
     recognizer.network.eval()
     prototypes = prototypes.to(device)
+    progress = tqdm(loader, total=len(loader), desc="Threshold stats", unit="batch", leave=False)
+    processed_samples = 0
 
-    for images, labels, _ in loader:
+    for images, labels, _ in progress:
         images = images.to(device)
         labels = labels.to(device)
         _, embeddings = recognizer.network(images)
@@ -91,6 +107,9 @@ def _collect_embedding_distances(recognizer: ResNet18Recognizer, loader, prototy
         masked.scatter_(1, labels.unsqueeze(1), float("inf"))
         nearest_impostor = masked.min(dim=1).values
         nearest_impostor_distances.extend(nearest_impostor.cpu().tolist())
+
+        processed_samples += images.size(0)
+        progress.set_postfix(samples=processed_samples)
 
     return {
         "genuine": genuine_distances,
@@ -141,6 +160,7 @@ def train_resnet18_from_config(cfg: dict):
     device = train_cfg.get("device", "auto")
     if device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
 
     folder_dataset = FaceFolderDataset(
         image_root=data_cfg["image_root"],
@@ -148,6 +168,10 @@ def train_resnet18_from_config(cfg: dict):
     )
     if len(folder_dataset) == 0:
         raise ValueError("Training folder is empty. Please put images under data/train/<person_name>/ before training.")
+    print(
+        f"Loaded training set: {len(folder_dataset)} images "
+        f"across {len(folder_dataset.label_to_name)} identities from {folder_dataset.split_dir}"
+    )
 
     preprocessor = FacePreprocessor.from_config(cfg["preprocess"])
     tensor_dataset = ResNetFaceDataset(folder_dataset, preprocessor)
@@ -184,14 +208,16 @@ def train_resnet18_from_config(cfg: dict):
     history = []
     epochs = int(train_cfg.get("epochs", 5))
     for epoch in range(1, epochs + 1):
+        print(f"\nEpoch {epoch}/{epochs}")
         metrics = _run_train_epoch(recognizer, train_loader, optimizer, device)
         metrics["epoch"] = epoch
         history.append(metrics)
         print(
-            f"Epoch {epoch}/{epochs} | "
+            f"Epoch {epoch}/{epochs} complete | "
             f"Train loss={metrics['loss']:.4f} acc={metrics['accuracy']:.4f}"
         )
 
+    print("\nComputing class prototypes...")
     prototypes = _compute_prototypes(recognizer, prototype_loader, device)
     recognizer.set_prototypes(prototypes, folder_dataset.label_to_name)
 
@@ -201,6 +227,7 @@ def train_resnet18_from_config(cfg: dict):
         "configured_threshold": float(model_cfg["threshold"]),
     }
     if threshold_mode == "auto":
+        print("Collecting embedding distance statistics for automatic thresholding...")
         distance_stats = _collect_embedding_distances(recognizer, prototype_loader, prototypes, device)
         recommendation = _recommend_threshold(model_cfg, distance_stats)
         recognizer.threshold = recommendation["recommended_threshold"]
