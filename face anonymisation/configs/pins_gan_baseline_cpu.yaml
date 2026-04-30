@@ -1,0 +1,49 @@
+data:
+  image_root: .
+  train_dir: pins_105_split/train
+  val_dir: pins_105_split/val
+  supported_extensions: [".jpg", ".jpeg", ".png", ".bmp", ".webp"]
+  image_size: 96
+  max_train_images: 4000
+  max_val_images: 400
+
+model:
+  generator:
+    base_channels: 32
+    noise_channels: 1
+    bottleneck_dropout: 0.2
+  discriminator:
+    base_channels: 32
+
+train:
+  batch_size: 4
+  num_workers: 0
+  epochs: 3
+  lr_generator: 0.0002
+  lr_discriminator: 0.0002
+  betas: [0.5, 0.999]
+  adv_weight: 1.0
+  recon_weight: 10.0
+  tv_weight: 0.0001
+  label_smoothing: 0.9
+  noise_std: 0.8
+  output_dir: face anonymisation/outputs/pins_gan_baseline_cpu
+  preview_samples: 6
+
+inference:
+  checkpoint: face anonymisation/outputs/pins_gan_baseline_cpu/best_generator.pt
+  source_dir: 105_classes_pins_dataset
+  manifest_csv: ""
+  label_mode: parent_dir
+  output_dir: face anonymisation/outputs/pins_gan_baseline_cpu_infer
+  batch_size: 2
+  num_workers: 0
+  apply_to: full_image
+  detection_enabled: false
+  noise_std: 0.8
+  seed: 42
+
+export:
+  anonymized_manifest: face anonymisation/outputs/pins_gan_baseline_cpu_infer/anonymized_manifest.csv
+  paired_manifest: face anonymisation/outputs/pins_gan_baseline_cpu_infer/paired_manifest.csv
+  summary_json: face anonymisation/outputs/pins_gan_baseline_cpu_infer/run_summary.json
