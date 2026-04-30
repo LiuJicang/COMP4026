@@ -23,8 +23,9 @@ from src.io_utils import (
     write_anonymized_manifest,
     write_paired_manifest,
 )
+from src.landmarks import FaceLandmarkDetector
 from src.models.generator import UNetAnonymizer
-
+from src.region_aware import apply_region_aware_blend
 
 def load_config(config_path: Path):
     with config_path.open("r", encoding="utf-8") as file:
@@ -57,6 +58,9 @@ def load_generator(cfg: dict, checkpoint_path: Path, device: str):
         base_channels=generator_cfg.get("base_channels", 64),
         noise_channels=generator_cfg.get("noise_channels", 1),
         bottleneck_dropout=generator_cfg.get("bottleneck_dropout", 0.0),
+        bottleneck_blocks=generator_cfg.get("bottleneck_blocks", 0),
+        residual_output=generator_cfg.get("residual_output", False),
+        residual_scale=generator_cfg.get("residual_scale", 0.5),
     ).to(device)
     state_dict = torch.load(checkpoint_path, map_location=device, weights_only=True)
     model.load_state_dict(state_dict)
@@ -128,47 +132,77 @@ def main():
     noise_std = float(inference_cfg.get("noise_std", 1.0))
 
     apply_to = inference_cfg.get("apply_to", "full_image")
-    detector = FaceRegionDetector(
-        enabled=inference_cfg.get("detection_enabled", False),
-        fallback_mode="full_image" if apply_to == "face" else "full_image",
-    )
+    detection_cfg = dict(cfg.get("detection", {}))
+    if "detection_enabled" in inference_cfg:
+        detection_cfg["enabled"] = inference_cfg.get("detection_enabled", False)
+    detection_cfg["fallback_mode"] = "full_image"
+    detector = FaceRegionDetector.from_config(detection_cfg)
+    landmark_detector = FaceLandmarkDetector.from_config(cfg.get("landmarks", {}), resolve_repo_path)
+    region_aware_cfg = inference_cfg.get("region_aware", {})
+    region_aware_enabled = bool(region_aware_cfg.get("enabled", False))
+    landmark_enabled = bool(cfg.get("landmarks", {}).get("enabled", False))
+    preserve_expression_enabled = bool(region_aware_cfg.get("preserve_expression", {}).get("enabled", False))
+    abstract_enabled = bool(region_aware_cfg.get("abstract", {}).get("enabled", False))
 
     processed_records: list[ProcessedRecord] = []
     skipped_examples = []
+    detected_face_count = 0
+    full_image_count = 0
+    landmark_detected_count = 0
 
-    for record in tqdm(records, desc="Inferring", unit="image"):
-        try:
-            image = cv2.imread(str(record.source_path))
-            if image is None:
-                raise FileNotFoundError(f"Failed to read image: {record.source_path}")
+    try:
+        for record in tqdm(records, desc="Inferring", unit="image"):
+            try:
+                image = cv2.imread(str(record.source_path))
+                if image is None:
+                    raise FileNotFoundError(f"Failed to read image: {record.source_path}")
 
-            region, _ = choose_region(image, apply_to, detector)
-            x, y, width, height = region
+                region, region_mode = choose_region(image, apply_to, detector)
+                x, y, width, height = region
 
-            result = image.copy()
-            roi = image[y : y + height, x : x + width]
-            inferred_roi = infer_region(generator, roi, image_size, noise_channels, noise_std, device)
-            result[y : y + height, x : x + width] = inferred_roi
+                result = image.copy()
+                roi = image[y : y + height, x : x + width]
+                inferred_roi = infer_region(generator, roi, image_size, noise_channels, noise_std, device)
+                landmarks = landmark_detector.detect(roi)
+                if landmarks is not None:
+                    landmark_detected_count += 1
 
-            output_path = output_dir / record.relative_path
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            if not cv2.imwrite(str(output_path), result):
-                raise IOError(f"Failed to write image: {output_path}")
+                if region_aware_enabled and apply_to == "face":
+                    result[y : y + height, x : x + width] = apply_region_aware_blend(
+                        roi,
+                        inferred_roi,
+                        region_aware_cfg,
+                        landmarks=landmarks,
+                    )
+                else:
+                    result[y : y + height, x : x + width] = inferred_roi
 
-            processed_records.append(
-                ProcessedRecord(
-                    source_path=record.source_path,
-                    output_path=output_path,
-                    label=record.label,
+                if region_mode == "detected_face":
+                    detected_face_count += 1
+                else:
+                    full_image_count += 1
+
+                output_path = output_dir / record.relative_path
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                if not cv2.imwrite(str(output_path), result):
+                    raise IOError(f"Failed to write image: {output_path}")
+
+                processed_records.append(
+                    ProcessedRecord(
+                        source_path=record.source_path,
+                        output_path=output_path,
+                        label=record.label,
+                    )
                 )
-            )
-        except Exception as exc:
-            skipped_examples.append(
-                {
-                    "source_path": str(record.source_path),
-                    "error": str(exc),
-                }
-            )
+            except Exception as exc:
+                skipped_examples.append(
+                    {
+                        "source_path": str(record.source_path),
+                        "error": str(exc),
+                    }
+                )
+    finally:
+        landmark_detector.close()
 
     labels_available = records_have_labels(processed_records)
     anonymized_manifest_path = resolve_optional_repo_path(export_cfg.get("anonymized_manifest", ""))
@@ -192,9 +226,16 @@ def main():
         "source_dir": source_dir,
         "manifest_csv": str(manifest_csv) if manifest_csv else "",
         "apply_to": apply_to,
+        "region_aware_enabled": region_aware_enabled,
+        "landmark_enabled": landmark_enabled,
+        "landmark_detected_samples": landmark_detected_count,
+        "preserve_expression_enabled": preserve_expression_enabled,
+        "abstract_enabled": abstract_enabled,
         "records_discovered": len(records),
         "processed_samples": len(processed_records),
         "skipped_samples": len(skipped_examples),
+        "detected_face_samples": detected_face_count,
+        "full_image_samples": full_image_count,
         "labels_available": labels_available,
         "output_dir": str(output_dir),
         "anonymized_manifest": str(anonymized_manifest_path) if labels_available and anonymized_manifest_path else "",

@@ -1,0 +1,78 @@
+data:
+  image_root: D:/4026/COMP4026
+  manifest_csv: ""
+  source_dir: D:/4026/105_classes_pins_dataset_split_80_20/test
+  label_mode: parent_dir
+  output_dir: face anonymisation/outputs/pins_test_blur_identity_feature_priority_infer
+  supported_extensions: [".jpg", ".jpeg", ".png", ".bmp", ".webp"]
+
+landmarks:
+  enabled: true
+  model_path: face anonymisation/models/face_landmarker.task
+  num_faces: 1
+
+detection:
+  enabled: true
+  cascade_path: ""
+  scale_factor: 1.1
+  min_neighbors: 4
+  min_size: [28, 28]
+  expand_ratio: 0.32
+  fallback_mode: full_image
+
+anonymizer:
+  method: gaussian_blur
+  apply_to: face
+  gaussian_blur:
+    kernel_size: 35
+    min_kernel_size: 31
+    adaptive_ratio: 0.46
+    max_kernel_ratio: 0.95
+    sigma: 0
+    region_aware:
+      enabled: true
+      base_strength: 0.92
+      identity_strength: 1.0
+      contour_strength: 1.0
+      hair_strength: 1.0
+      ear_strength: 1.0
+      eye_strength: 1.0
+      pupil_strength: 1.0
+      nose_strength: 1.0
+      forehead_strength: 1.0
+      chin_strength: 1.0
+      brow_strength: 0.28
+      cheek_strength: 0.52
+      mouth_strength: 0.38
+      softness: 0.02
+      ellipse_exponent: 0.35
+      head_center_x: 0.50
+      head_center_y: 0.47
+      head_radius_x: 0.68
+      head_radius_y: 0.76
+      head_ellipse_exponent: 0.28
+      mask_blur: 9
+      small_face_reference: 180
+      small_face_base_boost: 0.04
+      small_face_identity_boost: 0.02
+      small_face_contour_boost: 0.02
+      small_face_brow_penalty: 0.08
+      small_face_mouth_penalty: 0.10
+      small_face_cheek_penalty: 0.10
+      preserve_expression:
+        enabled: true
+        lip_strength: 1.0
+        brow_strength: 0.62
+        cheek_strength: 0.0
+        eye_strength: 0.34
+        nose_strength: 0.0
+        mask_blur: 9
+      post_blur_ratio: 0.0
+      post_blur_min_kernel: 0
+  pixelate:
+    pixel_size: 12
+
+export:
+  anonymized_manifest: face anonymisation/outputs/pins_test_blur_identity_feature_priority_infer/anonymized_manifest.csv
+  paired_manifest: face anonymisation/outputs/pins_test_blur_identity_feature_priority_infer/paired_manifest.csv
+  summary_json: face anonymisation/outputs/pins_test_blur_identity_feature_priority_infer/run_summary.json

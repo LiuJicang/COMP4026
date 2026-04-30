@@ -1,9 +1,9 @@
 data:
-  image_root: .
+  image_root: D:/4026/COMP4026
   manifest_csv: ""
-  source_dir: ""
-  label_mode: none
-  output_dir: face anonymisation/outputs/baseline_blur
+  source_dir: D:/4026/105_classes_pins_dataset_split_80_20/test
+  label_mode: parent_dir
+  output_dir: face anonymisation/outputs/pins_test_blur_infer
   supported_extensions: [".jpg", ".jpeg", ".png", ".bmp", ".webp"]
 
 detection:
@@ -31,6 +31,6 @@ anonymizer:
     pixel_size: 12
 
 export:
-  anonymized_manifest: face anonymisation/outputs/baseline_blur/anonymized_manifest.csv
-  paired_manifest: face anonymisation/outputs/baseline_blur/paired_manifest.csv
-  summary_json: face anonymisation/outputs/baseline_blur/run_summary.json
+  anonymized_manifest: face anonymisation/outputs/pins_test_blur_infer/anonymized_manifest.csv
+  paired_manifest: face anonymisation/outputs/pins_test_blur_infer/paired_manifest.csv
+  summary_json: face anonymisation/outputs/pins_test_blur_infer/run_summary.json
