@@ -1,0 +1,24 @@
+data:
+  image_root: d:/COMP4026
+  train_csv: facial expression recognition/data/manifests/train_original.csv
+  val_csv: facial expression recognition/data/manifests/val_original.csv
+  anon_val_csv: ""
+  paired_val_csv: ""
+  image_size: 224
+
+model:
+  backbone: resnet34
+  pretrained: true
+  num_classes: 7
+
+train:
+  batch_size: 64
+  num_workers: 2
+  epochs: 20
+  lr: 0.0003
+  weight_decay: 0.0001
+  output_dir: facial expression recognition/outputs/baseline_resnet34
+
+eval:
+  batch_size: 64
+  num_workers: 2

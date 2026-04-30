@@ -24,12 +24,19 @@ def load_config(config_path: str):
 def main():
     parser = argparse.ArgumentParser(description="Train expression recognition baseline")
     parser.add_argument("--config", type=str, default="configs/baseline.yaml")
+    parser.add_argument("--backbone", type=str, choices=["resnet18", "resnet34"], default=None)
+    parser.add_argument("--output-dir", type=str, default=None)
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    if args.backbone is not None:
+        cfg["model"]["backbone"] = args.backbone
+    if args.output_dir is not None:
+        cfg["train"]["output_dir"] = args.output_dir
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
+    print(f"Using backbone: {cfg['model'].get('backbone', 'resnet18')}")
 
     train_transform = build_transforms(cfg["data"]["image_size"], is_train=True)
     val_transform = build_transforms(cfg["data"]["image_size"], is_train=False)
@@ -50,14 +57,14 @@ def main():
         batch_size=cfg["train"]["batch_size"],
         shuffle=True,
         num_workers=cfg["train"]["num_workers"],
-        pin_memory=True,
+        pin_memory=(device == "cuda"),
     )
     val_loader = DataLoader(
         val_ds,
         batch_size=cfg["train"]["batch_size"],
         shuffle=False,
         num_workers=cfg["train"]["num_workers"],
-        pin_memory=True,
+        pin_memory=(device == "cuda"),
     )
 
     model = build_expression_model(
