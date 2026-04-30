@@ -1,0 +1,10 @@
+torch>=2.2.0
+torchvision>=0.17.0
+PyYAML>=6.0.0
+tqdm>=4.65.0
+Pillow>=10.0.0
+opencv-contrib-python>=4.8.0
+huggingface-hub>=0.24.0
+
+# Optional but recommended for identity guidance:
+# pip install facenet-pytorch --no-deps
