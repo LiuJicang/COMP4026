@@ -14,6 +14,7 @@ if str(MODULE_ROOT) not in sys.path:
 
 from src.anonymizers import ImageAnonymizer
 from src.detection import FaceRegionDetector
+from src.landmarks import FaceLandmarkDetector
 from src.io_utils import (
     ProcessedRecord,
     load_image_records,
@@ -86,47 +87,59 @@ def main():
         records = records[: args.limit]
 
     detector = FaceRegionDetector.from_config(cfg.get("detection", {}))
+    landmark_detector = FaceLandmarkDetector.from_config(cfg.get("landmarks", {}), lambda value: resolve_repo_path(value, REPO_ROOT))
     anonymizer = ImageAnonymizer.from_config(cfg["anonymizer"])
     apply_to = cfg["anonymizer"].get("apply_to", "face")
+    landmark_enabled = bool(cfg.get("landmarks", {}).get("enabled", False))
 
     processed_records: list[ProcessedRecord] = []
     skipped_examples = []
     detected_face_count = 0
     full_image_count = 0
+    landmark_detected_count = 0
 
-    for record in tqdm(records, desc="Anonymizing", unit="image"):
-        try:
-            image = cv2.imread(str(record.source_path))
-            if image is None:
-                raise FileNotFoundError(f"Failed to read image: {record.source_path}")
+    try:
+        for record in tqdm(records, desc="Anonymizing", unit="image"):
+            try:
+                image = cv2.imread(str(record.source_path))
+                if image is None:
+                    raise FileNotFoundError(f"Failed to read image: {record.source_path}")
 
-            region, region_mode = determine_region(image, apply_to, detector)
-            anonymized = anonymizer.apply(image, region)
+                region, region_mode = determine_region(image, apply_to, detector)
+                x, y, width, height = region
+                roi = image[y : y + height, x : x + width]
+                landmarks = landmark_detector.detect(roi)
+                if landmarks is not None:
+                    landmark_detected_count += 1
 
-            output_path = output_dir / record.relative_path
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            if not cv2.imwrite(str(output_path), anonymized):
-                raise IOError(f"Failed to write image: {output_path}")
+                anonymized = anonymizer.apply(image, region, landmarks=landmarks)
 
-            if region_mode == "detected_face":
-                detected_face_count += 1
-            else:
-                full_image_count += 1
+                output_path = output_dir / record.relative_path
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                if not cv2.imwrite(str(output_path), anonymized):
+                    raise IOError(f"Failed to write image: {output_path}")
 
-            processed_records.append(
-                ProcessedRecord(
-                    source_path=record.source_path,
-                    output_path=output_path,
-                    label=record.label,
+                if region_mode == "detected_face":
+                    detected_face_count += 1
+                else:
+                    full_image_count += 1
+
+                processed_records.append(
+                    ProcessedRecord(
+                        source_path=record.source_path,
+                        output_path=output_path,
+                        label=record.label,
+                    )
                 )
-            )
-        except Exception as exc:
-            skipped_examples.append(
-                {
-                    "source_path": str(record.source_path),
-                    "error": str(exc),
-                }
-            )
+            except Exception as exc:
+                skipped_examples.append(
+                    {
+                        "source_path": str(record.source_path),
+                        "error": str(exc),
+                    }
+                )
+    finally:
+        landmark_detector.close()
 
     labels_available = records_have_labels(processed_records)
 
@@ -152,6 +165,8 @@ def main():
         "manifest_csv": str(manifest_csv) if manifest_csv else "",
         "method": anonymizer.method,
         "apply_to": apply_to,
+        "landmark_enabled": landmark_enabled,
+        "landmark_detected_samples": landmark_detected_count,
         "records_discovered": len(records),
         "processed_samples": len(processed_records),
         "skipped_samples": len(skipped_examples),

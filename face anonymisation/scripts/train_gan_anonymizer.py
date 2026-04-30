@@ -126,12 +126,18 @@ def main():
         image_root=image_root,
         source_dir=train_dir,
         transform=train_transform,
+        crop_cfg=cfg["data"].get("crop", {}),
+        detection_cfg=cfg.get("detection", {}),
+        is_train=True,
         supported_extensions=cfg["data"].get("supported_extensions", []),
     )
     val_dataset = UnlabeledFaceImageDataset(
         image_root=image_root,
         source_dir=val_dir,
         transform=val_transform,
+        crop_cfg=cfg["data"].get("crop", {}),
+        detection_cfg=cfg.get("detection", {}),
+        is_train=False,
         supported_extensions=cfg["data"].get("supported_extensions", []),
     )
     train_dataset = maybe_limit_dataset(
@@ -169,6 +175,9 @@ def main():
         base_channels=generator_cfg.get("base_channels", 64),
         noise_channels=generator_cfg.get("noise_channels", 1),
         bottleneck_dropout=generator_cfg.get("bottleneck_dropout", 0.2),
+        bottleneck_blocks=generator_cfg.get("bottleneck_blocks", 0),
+        residual_output=generator_cfg.get("residual_output", False),
+        residual_scale=generator_cfg.get("residual_scale", 0.5),
     ).to(device)
     discriminator = PatchDiscriminator(
         in_channels=3,

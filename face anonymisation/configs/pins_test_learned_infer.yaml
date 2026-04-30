@@ -1,0 +1,65 @@
+data:
+  image_root: D:/4026/COMP4026
+  train_dir: CelebA-HQ/train
+  val_dir: CelebA-HQ/val
+  supported_extensions: [".jpg", ".jpeg", ".png", ".bmp", ".webp"]
+  image_size: 96
+
+model:
+  generator:
+    base_channels: 32
+    noise_channels: 1
+    bottleneck_dropout: 0.2
+  discriminator:
+    base_channels: 32
+
+train:
+  batch_size: 4
+  num_workers: 0
+  epochs: 3
+  lr_generator: 0.00015
+  lr_discriminator: 0.00015
+  betas: [0.5, 0.999]
+  adv_weight: 1.0
+  recon_weight: 8.0
+  tv_weight: 0.0001
+  label_smoothing: 0.9
+  noise_std: 0.6
+  generator_checkpoint: face anonymisation/outputs/gan_identity_expression_cpu/best_generator.pt
+  discriminator_checkpoint: face anonymisation/outputs/gan_identity_expression_cpu/last_discriminator.pt
+  output_dir: face anonymisation/outputs/gan_identity_expression_cpu_stage2
+  preview_samples: 6
+
+guidance:
+  identity:
+    enabled: true
+    pretrained: vggface2
+    input_size: 112
+    target_similarity: 0.25
+    weight: 3.0
+  expression:
+    enabled: true
+    checkpoint: face anonymisation/outputs/expression_teacher/best_model.pt
+    backbone: mobilenet_v3_small
+    num_classes: 7
+    input_size: 112
+    temperature: 2.0
+    weight: 2.0
+
+inference:
+  checkpoint: face anonymisation/outputs/gan_identity_expression_cpu_stage2/best_generator.pt
+  source_dir: D:/4026/105_classes_pins_dataset_split_80_20/test
+  manifest_csv: ""
+  label_mode: parent_dir
+  output_dir: face anonymisation/outputs/pins_test_learned_infer
+  batch_size: 2
+  num_workers: 0
+  apply_to: full_image
+  detection_enabled: false
+  noise_std: 0.6
+  seed: 42
+
+export:
+  anonymized_manifest: face anonymisation/outputs/pins_test_learned_infer/anonymized_manifest.csv
+  paired_manifest: face anonymisation/outputs/pins_test_learned_infer/paired_manifest.csv
+  summary_json: face anonymisation/outputs/pins_test_learned_infer/run_summary.json

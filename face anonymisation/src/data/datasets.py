@@ -4,6 +4,7 @@ from typing import Callable
 from PIL import Image
 from torch.utils.data import Dataset
 
+from src.data.crops import FaceHeadCropper
 from src.io_utils import DEFAULT_IMAGE_EXTENSIONS
 
 
@@ -13,6 +14,9 @@ class UnlabeledFaceImageDataset(Dataset):
         image_root: str | Path,
         source_dir: str | Path,
         transform: Callable,
+        crop_cfg: dict | None = None,
+        detection_cfg: dict | None = None,
+        is_train: bool = False,
         supported_extensions: list[str] | None = None,
     ) -> None:
         self.image_root = Path(image_root).resolve()
@@ -36,12 +40,20 @@ class UnlabeledFaceImageDataset(Dataset):
         if not self.paths:
             raise ValueError(f"No images found under: {self.source_dir}")
 
+        self.cropper = FaceHeadCropper.from_config(
+            crop_cfg=crop_cfg,
+            detection_cfg=detection_cfg,
+            is_train=is_train,
+        )
+
     def __len__(self) -> int:
         return len(self.paths)
 
     def __getitem__(self, index: int):
         image_path = self.paths[index]
         image = Image.open(image_path).convert("RGB")
+        if self.cropper is not None:
+            image = self.cropper.crop(image)
         return self.transform(image)
 
 

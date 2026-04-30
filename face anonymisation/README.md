@@ -121,11 +121,29 @@ To continue from that checkpoint with a stronger CPU run:
 python "face anonymisation/scripts/train_gan_anonymizer.py" --config "face anonymisation/configs/gan_identity_expression_cpu_stage2.yaml"
 ```
 
+For the teacher-provided training set, the current main model-generated path is:
+
+```powershell
+python "face anonymisation/scripts/train_gan_anonymizer.py" --config "face anonymisation/configs/gan_identity_expression_head_roi_cpu.yaml"
+```
+
+This config differs from the older CPU prototypes in three important ways:
+
+- it trains on a detected head/face ROI instead of the full image
+- it uses a stronger generator with extra bottleneck residual blocks
+- it uses residual output so the model starts from the input structure and learns identity-changing edits
+
 ## Run Inference
 
 ```powershell
 python "face anonymisation/scripts/infer_gan_anonymizer.py" --config "face anonymisation/configs/gan_identity_expression.yaml"
 ```
+
+For the pins test split, there are now three useful learned inference variants:
+
+- `pins_test_learned_infer.yaml`: edits the full image
+- `pins_test_learned_face_infer.yaml`: edits only the detected face ROI
+- `pins_test_learned_region_aware_infer.yaml`: edits the face ROI with stronger identity masking around eyes/nose/contours and weaker edits around the mouth/brow area
 
 ## Optional Classical Baselines
 

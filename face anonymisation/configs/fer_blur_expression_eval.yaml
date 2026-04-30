@@ -1,0 +1,30 @@
+data:
+  image_root: D:/4026/COMP4026
+  manifest_csv: face anonymisation/outputs/fer_expression_bridge/eval_actual.csv
+  source_dir: ""
+  label_mode: none
+  output_dir: face anonymisation/outputs/fer_blur_expression_eval
+  supported_extensions: [".jpg", ".jpeg", ".png", ".bmp", ".webp"]
+
+detection:
+  enabled: true
+  cascade_path: ""
+  scale_factor: 1.1
+  min_neighbors: 5
+  min_size: [24, 24]
+  expand_ratio: 0.1
+  fallback_mode: full_image
+
+anonymizer:
+  method: gaussian_blur
+  apply_to: face
+  gaussian_blur:
+    kernel_size: 19
+    sigma: 0
+  pixelate:
+    pixel_size: 8
+
+export:
+  anonymized_manifest: face anonymisation/outputs/fer_blur_expression_eval/anonymized_manifest.csv
+  paired_manifest: face anonymisation/outputs/fer_blur_expression_eval/paired_manifest.csv
+  summary_json: face anonymisation/outputs/fer_blur_expression_eval/run_summary.json
