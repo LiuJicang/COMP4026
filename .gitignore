@@ -31,3 +31,8 @@ face recognition/data/test_anonymized/**
 !face recognition/data/test_anonymized/.gitkeep
 face recognition/outputs/
 tmp/
+
+# Generated image folders from anonymisation experiments
+face anonymisation/pins_test_blur_identity_feature_priority_infer/
+face anonymisation/pins_test_learned_expression_preserve_hybrid_infer/
+face recognition/105_classes_pins_dataset_split_80_20/
